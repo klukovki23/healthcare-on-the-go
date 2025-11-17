@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import MainLayout from '../components/MainLayout';
 
 interface Appointment {
     id: string;
@@ -135,73 +136,75 @@ const Schedule = () => {
     );
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.title}>Aikataulu</Text>
-                <View style={styles.headerButtons}>
-                    <TouchableOpacity
-                        onPress={handleVoiceInput}
-                        style={[
-                            styles.iconButton,
-                            { backgroundColor: isRecording ? '#ef4444' : '#2563eb' },
-                        ]}
-                    >
-                        <Ionicons name="mic" size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => setIsEditMode(!isEditMode)}
-                        style={[
-                            styles.iconButton,
-                            { backgroundColor: isEditMode ? '#6b7280' : '#2563eb' },
-                        ]}
-                    >
-                        <Ionicons name="pencil" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* List */}
-            <FlatList
-                data={appointments}
-                keyExtractor={(item) => item.id}
-                renderItem={renderItem}
-                style={styles.list}
-            />
-
-            {/* Edit Modal */}
-            <Modal visible={!!editingId} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modal}>
-                        <Text style={styles.modalTitle}>Muokkaa varausta</Text>
-
-                        <Text style={styles.label}>Aika</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={editTime}
-                            onChangeText={setEditTime}
-                            placeholder="HH:MM"
-                        />
-
-                        <Text style={styles.label}>Asiakas</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={editPatient}
-                            onChangeText={setEditPatient}
-                            placeholder="Asiakkaan nimi"
-                        />
-
-                        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                            <Text style={styles.saveText}>Tallenna</Text>
+        <MainLayout>
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>Aikataulu</Text>
+                    <View style={styles.headerButtons}>
+                        <TouchableOpacity
+                            onPress={handleVoiceInput}
+                            style={[
+                                styles.iconButton,
+                                { backgroundColor: isRecording ? '#ef4444' : '#2563eb' },
+                            ]}
+                        >
+                            <Ionicons name="mic" size={20} color="#fff" />
                         </TouchableOpacity>
-
-                        <TouchableOpacity onPress={() => setEditingId(null)}>
-                            <Text style={styles.cancelText}>Peruuta</Text>
+                        <TouchableOpacity
+                            onPress={() => setIsEditMode(!isEditMode)}
+                            style={[
+                                styles.iconButton,
+                                { backgroundColor: isEditMode ? '#6b7280' : '#2563eb' },
+                            ]}
+                        >
+                            <Ionicons name="pencil" size={20} color="#fff" />
                         </TouchableOpacity>
                     </View>
                 </View>
-            </Modal>
-        </View>
+
+                {/* List */}
+                <FlatList
+                    data={appointments}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderItem}
+                    style={styles.list}
+                />
+
+                {/* Edit Modal */}
+                <Modal visible={!!editingId} transparent animationType="slide">
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modal}>
+                            <Text style={styles.modalTitle}>Muokkaa varausta</Text>
+
+                            <Text style={styles.label}>Aika</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editTime}
+                                onChangeText={setEditTime}
+                                placeholder="HH:MM"
+                            />
+
+                            <Text style={styles.label}>Asiakas</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={editPatient}
+                                onChangeText={setEditPatient}
+                                placeholder="Asiakkaan nimi"
+                            />
+
+                            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                                <Text style={styles.saveText}>Tallenna</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={() => setEditingId(null)}>
+                                <Text style={styles.cancelText}>Peruuta</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+            </View>
+        </MainLayout>
     );
 };
 

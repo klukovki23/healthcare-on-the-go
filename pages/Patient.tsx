@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import MainLayout from '../components/MainLayout';
+
 
 interface Patient {
     id: number;
@@ -93,90 +95,92 @@ const PatientCard = () => {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            {/* Header-napit */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.navButton} onPress={handlePrevious}>
-                    <Ionicons name="chevron-back" size={24} color="#fff" />
-                </TouchableOpacity>
+        <MainLayout>
+            <ScrollView style={styles.container}>
+                {/* Header-napit */}
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.navButton} onPress={handlePrevious}>
+                        <Ionicons name="chevron-back" size={24} color="#fff" />
+                    </TouchableOpacity>
 
-                <Text style={styles.headerText}>{currentPatient.name}</Text>
+                    <Text style={styles.headerText}>{currentPatient.name}</Text>
 
-                <TouchableOpacity style={styles.navButton} onPress={handleNext}>
-                    <Ionicons name="chevron-forward" size={24} color="#fff" />
-                </TouchableOpacity>
-            </View>
-
-            {/* SOS-painike */}
-            <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
-                <Ionicons name="call" size={24} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.sosText}>SOS</Text>
-            </TouchableOpacity>
-
-            {/* Potilastiedot */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Asiakkaan tiedot</Text>
-                <Text style={styles.cardText}>{currentPatient.contact}</Text>
-            </View>
-
-            {/* Päivän toimenpiteet */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Päivän toimenpiteet</Text>
-                <Text style={styles.cardText}>Ei toimenpiteitä tälle päivälle</Text>
-            </View>
-
-            {/* AI-yhteenveto */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>AI Yhteenveto</Text>
-                <Text style={styles.cardText}>Sairaudet: lääkitykset...</Text>
-            </View>
-
-            {/* Muistiinpanot */}
-            <View style={styles.card}>
-                <View style={styles.noteHeader}>
-                    <Text style={styles.cardTitle}>Omat muistiinpanot</Text>
-                    <TouchableOpacity
-                        style={[
-                            styles.micButton,
-                            isRecording ? styles.micActive : styles.micInactive,
-                        ]}
-                        onPress={handleVoiceInput}
-                    >
-                        <Ionicons name="mic" size={20} color="#fff" />
+                    <TouchableOpacity style={styles.navButton} onPress={handleNext}>
+                        <Ionicons name="chevron-forward" size={24} color="#fff" />
                     </TouchableOpacity>
                 </View>
 
-                <TextInput
-                    style={styles.textarea}
-                    placeholder="Kirjoita muistiinpanot tänne..."
-                    multiline
-                    value={noteText}
-                    onChangeText={setNoteText}
-                />
-
-                <TouchableOpacity
-                    style={[
-                        styles.saveButton,
-                        !noteText.trim() && styles.saveButtonDisabled,
-                    ]}
-                    onPress={handleSaveNote}
-                    disabled={!noteText.trim()}
-                >
-                    <Text style={styles.saveText}>Tallenna muistiinpano</Text>
+                {/* SOS-painike */}
+                <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
+                    <Ionicons name="call" size={24} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.sosText}>SOS</Text>
                 </TouchableOpacity>
 
-                {savedNotes.length > 0 && (
-                    <View style={styles.notesList}>
-                        <Text style={styles.savedTitle}>Tallennetut muistiinpanot:</Text>
-                        {savedNotes.map((note, index) => (
-                            <View key={index} style={styles.savedNote}>
-                                <Text style={styles.savedText}>{note}</Text>
-                            </View>
-                        ))}
+                {/* Potilastiedot */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Asiakkaan tiedot</Text>
+                    <Text style={styles.cardText}>{currentPatient.contact}</Text>
+                </View>
+
+                {/* Päivän toimenpiteet */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Päivän toimenpiteet</Text>
+                    <Text style={styles.cardText}>Ei toimenpiteitä tälle päivälle</Text>
+                </View>
+
+                {/* AI-yhteenveto */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>AI Yhteenveto</Text>
+                    <Text style={styles.cardText}>Sairaudet: lääkitykset...</Text>
+                </View>
+
+                {/* Muistiinpanot */}
+                <View style={styles.card}>
+                    <View style={styles.noteHeader}>
+                        <Text style={styles.cardTitle}>Omat muistiinpanot</Text>
+                        <TouchableOpacity
+                            style={[
+                                styles.micButton,
+                                isRecording ? styles.micActive : styles.micInactive,
+                            ]}
+                            onPress={handleVoiceInput}
+                        >
+                            <Ionicons name="mic" size={20} color="#fff" />
+                        </TouchableOpacity>
                     </View>
-                )}
-            </View>
-        </ScrollView>
+
+                    <TextInput
+                        style={styles.textarea}
+                        placeholder="Kirjoita muistiinpanot tänne..."
+                        multiline
+                        value={noteText}
+                        onChangeText={setNoteText}
+                    />
+
+                    <TouchableOpacity
+                        style={[
+                            styles.saveButton,
+                            !noteText.trim() && styles.saveButtonDisabled,
+                        ]}
+                        onPress={handleSaveNote}
+                        disabled={!noteText.trim()}
+                    >
+                        <Text style={styles.saveText}>Tallenna muistiinpano</Text>
+                    </TouchableOpacity>
+
+                    {savedNotes.length > 0 && (
+                        <View style={styles.notesList}>
+                            <Text style={styles.savedTitle}>Tallennetut muistiinpanot:</Text>
+                            {savedNotes.map((note, index) => (
+                                <View key={index} style={styles.savedNote}>
+                                    <Text style={styles.savedText}>{note}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </ScrollView>
+        </MainLayout>
     );
 };
 
