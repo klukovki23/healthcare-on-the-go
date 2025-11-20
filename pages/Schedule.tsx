@@ -4,11 +4,11 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    FlatList,
     Modal,
     TextInput,
     Alert,
 } from 'react-native';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import MainLayout from '../components/MainLayout';
@@ -17,25 +17,27 @@ interface Appointment {
     id: string;
     time: string;
     patient: string;
+    address: string;
+    serviceType: 'medication' | 'woundCare' | 'physiotherapy' | 'injection' | string;
 }
 
 const Schedule = () => {
     const navigation = useNavigation<any>();
 
     const [appointments, setAppointments] = useState<Appointment[]>([
-        { id: '1', time: '08:00', patient: 'Asiakas 1' },
-        { id: '2', time: '08:30', patient: 'Asiakas 2' },
-        { id: '3', time: '09:00', patient: 'Asiakas 3' },
-        { id: '4', time: '09:30', patient: 'Asiakas 4' },
-        { id: '5', time: '10:00', patient: 'Asiakas 5' },
-        { id: '6', time: '10:20', patient: 'Asiakas 6' },
-        { id: '7', time: '11:00', patient: 'Asiakas 7' },
-        { id: '8', time: '11:40', patient: 'Asiakas 2' },
-        { id: '9', time: '12:00', patient: 'Asiakas 8' },
-        { id: '10', time: '12:40', patient: 'Asiakas 1' },
-        { id: '11', time: '14:00', patient: 'Asiakas 9' },
-        { id: '12', time: '14:30', patient: 'Asiakas 3' },
-        { id: '13', time: '14:50', patient: 'Asiakas 10' },
+        { id: '1', time: '08:00', patient: 'Anna Virtanen', address: 'Keskuskatu 1, Helsinki', serviceType: 'medication' },
+        { id: '2', time: '08:30', patient: 'Mikko Korhonen', address: 'Rantatie 5, Espoo', serviceType: 'woundCare' },
+        { id: '3', time: '09:00', patient: 'Laura Nieminen', address: 'Puistotie 12, Vantaa', serviceType: 'physiotherapy' },
+        { id: '4', time: '09:30', patient: 'Jussi Mäkinen', address: 'Asemakatu 3, Helsinki', serviceType: 'injection' },
+        { id: '5', time: '10:00', patient: 'Sari Lehtinen', address: 'Koulutie 8, Espoo', serviceType: 'medication' },
+        { id: '6', time: '10:20', patient: 'Pekka Salmi', address: 'Raitatie 22, Vantaa', serviceType: 'woundCare' },
+        { id: '7', time: '11:00', patient: 'Tiina Koskinen', address: 'Torikatu 7, Helsinki', serviceType: 'physiotherapy' },
+        { id: '8', time: '11:40', patient: 'Mikko Korhonen', address: 'Rantatie 5, Espoo', serviceType: 'injection' },
+        { id: '9', time: '12:00', patient: 'Oona Laakso', address: 'Kivitie 15, Vantaa', serviceType: 'medication' },
+        { id: '10', time: '12:40', patient: 'Anna Virtanen', address: 'Keskuskatu 1, Helsinki', serviceType: 'woundCare' },
+        { id: '11', time: '14:00', patient: 'Ville Hämäläinen', address: 'Satamatie 4, Espoo', serviceType: 'physiotherapy' },
+        { id: '12', time: '14:30', patient: 'Laura Nieminen', address: 'Puistotie 12, Vantaa', serviceType: 'other' },
+        { id: '13', time: '14:50', patient: 'Eero Räsänen', address: 'Kirkonkyläntie 9, Helsinki', serviceType: 'medication' },
     ]);
 
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,6 +78,60 @@ const Schedule = () => {
         }
     };
 
+    const getServiceIconOrLabel = (serviceType: Appointment['serviceType']) => {
+        switch (serviceType) {
+            case 'medication':
+                return <Ionicons name="medkit" size={20} color="#2563eb" style={{ marginRight: 6 }} />;
+            case 'woundCare':
+                return <Ionicons name="bandage" size={20} color="#10b981" style={{ marginRight: 6 }} />;
+            case 'physiotherapy':
+                return <Ionicons name="walk" size={20} color="#f59e42" style={{ marginRight: 6 }} />;
+            case 'injection':
+                return <Ionicons name="fitness" size={20} color="#ef4444" style={{ marginRight: 6, transform: [{ rotate: '45deg' }] }} />;
+            default:
+                return <Text style={styles.serviceLabel}>{serviceType}</Text>;
+        }
+    };
+
+    const renderItem = ({ item, drag, isActive }: RenderItemParams<Appointment>) => (
+        <TouchableOpacity
+            style={[styles.item, currentPatientId === item.id && styles.activeItem, isActive && styles.activeDragItem]}
+            onPress={() => {
+                if (!isEditMode) {
+                    setCurrentPatientId(item.id);
+                    handlePatientClick(item.patient);
+                }
+            }}
+        >
+            <View style={styles.itemLeft}>
+                <Text style={[styles.time, currentPatientId === item.id && styles.activeTime]}>
+                    {item.time}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {getServiceIconOrLabel(item.serviceType)}
+                    <View>
+                        <Text style={[styles.patient, currentPatientId === item.id && styles.activePatient]}>
+                            {item.patient}
+                        </Text>
+                        <Text style={styles.address}>{item.address}</Text>
+                    </View>
+                </View>
+            </View>
+            {isEditMode && (
+                <View style={styles.itemButtons}>
+                    <TouchableOpacity onPress={() => handleEdit(item)}>
+                        <Ionicons name="create-outline" size={20} color="#555" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                        <Ionicons name="trash-outline" size={20} color="red" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onLongPress={drag} style={styles.dragHandle}>
+                        <Ionicons name="menu" size={24} color="#2563eb" />
+                    </TouchableOpacity>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
     const handleVoiceInput = () => {
         if (!isRecording) {
             setIsRecording(true);
@@ -89,51 +145,6 @@ const Schedule = () => {
             Alert.alert('Äänitys pysäytetty');
         }
     };
-
-    const renderItem = ({ item }: { item: Appointment }) => (
-        <TouchableOpacity
-            style={[
-                styles.item,
-                currentPatientId === item.id && styles.activeItem,
-            ]}
-            onPress={() => {
-                if (!isEditMode) {
-                    setCurrentPatientId(item.id);
-                    handlePatientClick(item.patient);
-                }
-            }}
-        >
-            <View style={styles.itemLeft}>
-                <Text
-                    style={[
-                        styles.time,
-                        currentPatientId === item.id && styles.activeTime,
-                    ]}
-                >
-                    {item.time}
-                </Text>
-                <Text
-                    style={[
-                        styles.patient,
-                        currentPatientId === item.id && styles.activePatient,
-                    ]}
-                >
-                    {item.patient}
-                </Text>
-            </View>
-
-            {isEditMode && (
-                <View style={styles.itemButtons}>
-                    <TouchableOpacity onPress={() => handleEdit(item)}>
-                        <Ionicons name="create-outline" size={20} color="#555" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                        <Ionicons name="trash-outline" size={20} color="red" />
-                    </TouchableOpacity>
-                </View>
-            )}
-        </TouchableOpacity>
-    );
 
     return (
         <MainLayout>
@@ -164,11 +175,21 @@ const Schedule = () => {
                 </View>
 
                 {/* List */}
-                <FlatList
+                <DraggableFlatList
                     data={appointments}
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
                     style={styles.list}
+                    onDragEnd={({ data, from, to }) => {
+                        // Swap times between moved item and its new position
+                        const newData = [...data];
+                        if (from !== to) {
+                            const tempTime = newData[to].time;
+                            newData[to].time = newData[from].time;
+                            newData[from].time = tempTime;
+                        }
+                        setAppointments(newData);
+                    }}
                 />
 
                 {/* Edit Modal */}
@@ -234,6 +255,16 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    dragHandle: {
+        padding: 6,
+        marginLeft: 4,
+        borderRadius: 6,
+        backgroundColor: '#e0e7ef',
+    },
+    activeDragItem: {
+        opacity: 0.7,
+        backgroundColor: '#dbeafe',
+    },
     activeItem: {
         borderLeftWidth: 4,
         borderLeftColor: '#2563eb',
@@ -241,7 +272,9 @@ const styles = StyleSheet.create({
     },
     itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     time: { width: 60, fontWeight: 'bold', color: '#374151' },
-    patient: { fontSize: 15, color: '#6b7280' },
+    patient: { fontSize: 15, color: '#111827', fontWeight: 'bold' },
+    address: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+    serviceLabel: { fontSize: 13, color: '#64748b', marginRight: 6, fontStyle: 'italic' },
     activeTime: { color: '#2563eb' },
     activePatient: { color: '#111827' },
     itemButtons: { flexDirection: 'row', gap: 12 },
@@ -279,3 +312,4 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
 });
+

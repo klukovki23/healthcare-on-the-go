@@ -1,4 +1,5 @@
 import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView, StyleSheet, StatusBar, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -12,21 +13,21 @@ const Stack = createNativeStackNavigator();
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <NavigationContainer>
-        <SafeAreaView style={styles.container}>
-          <StatusBar barStyle="dark-content" />
-
-          <View style={{ flex: 1 }}>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="Schedule" component={Schedule} />
-              <Stack.Screen name="Patient" component={Patient} />
-            </Stack.Navigator>
-          </View>
-
-        </SafeAreaView>
-      </NavigationContainer>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <NavigationContainer>
+          <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" />
+            <View style={{ flex: 1 }}>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Schedule" component={Schedule} />
+                <Stack.Screen name="Patient" component={Patient} />
+              </Stack.Navigator>
+            </View>
+          </SafeAreaView>
+        </NavigationContainer>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 };
 
