@@ -23,6 +23,7 @@ const App = () => {
               <Stack.Navigator screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="Schedule" component={Schedule} />
                 <Stack.Screen name="Patient" component={Patient} />
+                <Stack.Screen name="Reports" component={Reports} />
               </Stack.Navigator>
             </View>
           </SafeAreaView>
