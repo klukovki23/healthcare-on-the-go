@@ -12,6 +12,7 @@ import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flat
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import MainLayout from '../components/MainLayout';
+import { setSavedAppointment, setSavedAppointments } from '../utils/session';
 
 interface Appointment {
     id: string;
@@ -72,9 +73,13 @@ const Schedule = () => {
         Alert.alert('Poistettu', 'Varaus poistettu');
     };
 
-    const handlePatientClick = (patientName: string) => {
+    const handlePatientClick = (appointment: Appointment) => {
         if (!isEditMode) {
-            navigation.navigate('Patient', { patientName });
+            // Persist selection in session so Patient can restore if unmounted
+            setSavedAppointment(appointment);
+            setSavedAppointments(appointments);
+            // Pass the selected appointment and the whole appointments list
+            navigation.navigate('Patient', { patient: appointment, appointments });
         }
     };
 
@@ -99,7 +104,7 @@ const Schedule = () => {
             onPress={() => {
                 if (!isEditMode) {
                     setCurrentPatientId(item.id);
-                    handlePatientClick(item.patient);
+                    handlePatientClick(item);
                 }
             }}
         >

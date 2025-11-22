@@ -11,47 +11,70 @@ import {
 import { useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import MainLayout from '../components/MainLayout';
+import { getSavedAppointment, getSavedAppointments } from '../utils/session';
 
 
 interface Patient {
-    id: number;
+    id: string | number;
     name: string;
     contact: string;
-    notes: string[];
+    notes?: string[];
 }
 
 const PatientCard = () => {
     const route = useRoute<any>();
-    const [patients] = useState<Patient[]>([
-        { id: 1, name: 'Asiakas 1', contact: 'Asiakkaan henkilötiedot ja yhteystiedot', notes: [] },
-        { id: 2, name: 'Asiakas 2', contact: 'Asiakkaan henkilötiedot ja yhteystiedot', notes: [] },
-        { id: 3, name: 'Asiakas 3', contact: 'Asiakkaan henkilötiedot ja yhteystiedot', notes: [] },
-    ]);
+    // Expecting navigation params from Schedule: `patient` and `appointments`
+    // If the screen was unmounted and remounted without params, fall back
+    // to the in-memory session store so we keep showing the correct patient.
+    const initialPassedAppointment = route.params?.patient ?? getSavedAppointment();
+    const initialPassedAppointments: any[] | undefined = route.params?.appointments ?? getSavedAppointments();
 
-    // Potilaan nimi saadaan navigoinnista
-    const patientNameFromSchedule = route.params?.patientName;
-    const initialIndex = patientNameFromSchedule
-        ? patients.findIndex((p) => p.name === patientNameFromSchedule)
-        : 0;
+    // Persist params in component state so they survive navigation away/back
+    const [savedAppointment, setSavedAppointment] = useState<any | undefined>(initialPassedAppointment);
+    const [savedAppointments, setSavedAppointments] = useState<any[] | undefined>(initialPassedAppointments);
 
-    const [currentPatientIndex, setCurrentPatientIndex] = useState(
-        initialIndex >= 0 ? initialIndex : 0
+    const [patients, setPatients] = useState<Patient[]>(
+        savedAppointments ? savedAppointments.map((a) => ({ id: a.id, name: a.patient, contact: a.address })) : []
     );
+
+    const [currentPatientIndex, setCurrentPatientIndex] = useState<number>(0);
+
+    // Update saved params if new params arrive (e.g. on first mount)
+    useEffect(() => {
+        if (route.params?.appointments) setSavedAppointments(route.params.appointments);
+        if (route.params?.patient) setSavedAppointment(route.params.patient);
+    }, [route.params]);
+
+    // Rebuild patient list and set index when savedAppointments or savedAppointment change
+    useEffect(() => {
+        if (savedAppointments) {
+            const newPatients = savedAppointments.map((a) => ({ id: a.id, name: a.patient, contact: a.address }));
+            setPatients(newPatients);
+            if (savedAppointment) {
+                const idx = newPatients.findIndex((p) => String(p.id) === String(savedAppointment.id));
+                setCurrentPatientIndex(idx >= 0 ? idx : 0);
+            } else {
+                setCurrentPatientIndex(0);
+            }
+        }
+    }, [savedAppointments, savedAppointment]);
     const [isRecording, setIsRecording] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [savedNotes, setSavedNotes] = useState<string[]>([]);
-    const currentPatient = patients[currentPatientIndex];
+    const currentPatient = patients.length
+        ? patients[currentPatientIndex]
+        : (savedAppointment ? { id: savedAppointment.id, name: savedAppointment.patient, contact: savedAppointment.address } : { id: 0, name: 'Tuntematon', contact: 'Ei lisätietoja' });
 
     const handlePrevious = () => {
-        setCurrentPatientIndex((prev) =>
-            prev > 0 ? prev - 1 : patients.length - 1
-        );
+        if (patients.length) {
+            setCurrentPatientIndex((prev) => (prev > 0 ? prev - 1 : patients.length - 1));
+        }
     };
 
     const handleNext = () => {
-        setCurrentPatientIndex((prev) =>
-            prev < patients.length - 1 ? prev + 1 : 0
-        );
+        if (patients.length) {
+            setCurrentPatientIndex((prev) => (prev < patients.length - 1 ? prev + 1 : 0));
+        }
     };
 
     const handleVoiceInput = () => {
