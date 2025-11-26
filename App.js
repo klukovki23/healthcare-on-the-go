@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import Schedule from './pages/Schedule';
-import Patient from './pages/Patient';
+import Patient from './pages/PatientClean';
 import Reports from './pages/Reports';
 
 const queryClient = new QueryClient();
