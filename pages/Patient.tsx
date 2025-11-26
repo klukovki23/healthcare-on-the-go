@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Linking } from 'react-native';
 import MainLayout from '../components/MainLayout';
 import { getSavedAppointment, getSavedAppointments } from '../utils/session';
 
@@ -100,16 +101,28 @@ const PatientCard = () => {
         }
     };
 
+    const coordinatorName = 'Maria Korhonen';
+    const coordinatorPhoneNumber = '0501234567';
+    const coordinatorPhoneDisplay = '050 123 4567';
+
     const handleSOS = () => {
         Alert.alert(
             'Hätäapu',
-            'Haluatko soittaa hätäavun paikalle?',
+            `Soitetaanko ${coordinatorName}, ${coordinatorPhoneDisplay}?`,
             [
                 { text: 'Peruuta', style: 'cancel' },
                 {
                     text: 'Soita',
                     onPress: () => {
-                        Alert.alert('Hätäapu', 'Hätäpuhelu soitetaan...');
+                        // Try to open the phone dialer
+                        const tel = `tel:${coordinatorPhoneNumber}`;
+                        Linking.canOpenURL(tel).then((supported) => {
+                            if (supported) {
+                                Linking.openURL(tel);
+                            } else {
+                                Alert.alert('Virhe', 'Puhelinsoittoa ei voida aloittaa tällä laitteella.');
+                            }
+                        });
                     },
                     style: 'destructive',
                 },
@@ -133,11 +146,20 @@ const PatientCard = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* SOS-painike */}
-                <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
-                    <Ionicons name="call" size={24} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={styles.sosText}>SOS</Text>
-                </TouchableOpacity>
+                {/* Tilaa apua -ikoni ja teksti yhdistettynä yhdeksi napiksi; teksti saa vaaleamman taustan */}
+                <View style={styles.sosContainer}>
+                    <TouchableOpacity
+                        style={styles.sosCombined}
+                        onPress={handleSOS}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        accessibilityRole="button"
+                    >
+                        <View style={styles.sosIconButton}>
+                            <Ionicons name="call" size={20} color="#fff" />
+                        </View>
+                        <Text style={styles.sosLabelCombined}>Tilaa apua</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Potilastiedot */}
                 <View style={styles.card}>
@@ -238,8 +260,8 @@ const styles = StyleSheet.create({
     sosButton: {
         flexDirection: 'row',
         backgroundColor: '#dc2626',
-        borderRadius: 50,
-        height: 56,
+        borderRadius: 30,
+        height: 44,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
@@ -247,8 +269,63 @@ const styles = StyleSheet.create({
     },
     sosText: {
         color: '#fff',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '700',
+    },
+    sosRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sosContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+        width: '100%',
+    },
+    sosCombined: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e49191ff',
+        borderRadius: 15,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+    },
+    sosIconButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#dc2626',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sosLabel: {
+        marginLeft: 12,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        alignSelf: 'center',
+    },
+    sosLabelCombined: {
+        marginLeft: 12,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        alignSelf: 'center',
+    },
+    coordinatorInfo: {
+        marginLeft: 12,
+    },
+    coordinatorName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    coordinatorPhone: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginTop: 2,
     },
     card: {
         backgroundColor: '#fff',

@@ -185,6 +185,8 @@ const Schedule = () => {
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
                     style={styles.list}
+                    // Ensure the last item can scroll up above the bottom spacer
+                    contentContainerStyle={{ paddingBottom: 90 }}
                     onDragEnd={({ data, from, to }) => {
                         // Swap times between moved item and its new position
                         const newData = [...data];
