@@ -13,15 +13,15 @@ import {
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import MainLayout from '../components/MainLayout';
-import { setSavedAppointment, setSavedAppointments } from '../utils/session';
+import { setSavedAppointment, setSavedAppointments, getSavedAppointments, getSavedAppointment } from '../utils/session';
+import { getPatients, setPatients, getPatientById } from '../utils/patients';
 
 interface Appointment {
     id: string;
     time: string;
-    patient: string;
-    address: string;
+    patientId: string; // reference to patient entity
     visitNotes?: string; // short description of what will happen during the visit
     medication?: string; // medication name (if any)
     dosage?: string; // dosage or instructions (if any)
@@ -40,22 +40,39 @@ const Schedule = () => {
         'Saattohoito',
     ];
 
-    const [appointments, setAppointments] = useState<Appointment[]>([
-    { id: '1', time: '08:00', patient: 'Eero Räsänen', address: 'Kirkonkyläntie 9, Helsinki', visitNotes: 'Syöpähoito', medication: 'Cisplatin', dosage: '70 mg/m² i.v.' },
-    { id: '2', time: '08:30', patient: 'Sari Lehtinen', address: 'Koulutie 8, Helsinki', visitNotes: 'Saattohoito', medication: 'Morphine', dosage: '5 mg s.c. PRN' },
-    { id: '3', time: '09:00', patient: 'Anna Virtanen', address: 'Keskuskatu 1, Helsinki', visitNotes: 'Tutkimukset ja seuranta', medication: 'Paracetamol', dosage: '500 mg p.o.' },
-    { id: '4', time: '09:30', patient: 'Mikko Korhonen', address: 'Rantatie 5, Helsinki', visitNotes: 'Haavanhoito', medication: 'Paikallinen antiseptinen', dosage: 'Levitä tarvittaessa' },
-    { id: '5', time: '10:00', patient: 'Laura Nieminen', address: 'Puistotie 12, Helsinki', visitNotes: 'Fysioterapia', medication: 'Ei lääkettä', dosage: '' },
-    { id: '6', time: '10:30', patient: 'Jussi Mäkinen', address: 'Asemakatu 3, Helsinki', visitNotes: 'Suonen sisäiset hoidot', medication: 'Influenssarokote', dosage: '0.5 ml i.m.' },
-    { id: '7', time: '11:00', patient: 'Pekka Salmi', address: 'Raitatie 22, Helsinki', visitNotes: 'Haavanhoito', medication: 'Hydrokortisonivoide', dosage: 'Levitä ohuelti' },
-    { id: '8', time: '11:40', patient: 'Tiina Koskinen', address: 'Torikatu 7, Helsinki', visitNotes: 'Tutkimukset ja seuranta', medication: 'Ei lääkettä', dosage: '' },
-    { id: '9', time: '12:00', patient: 'Mikko Korhonen', address: 'Rantatie 5, Helsinki', visitNotes: 'Tutkimukset ja seuranta', medication: 'Insuliini', dosage: 'Katso potilastiedot' },
-    { id: '10', time: '12:40', patient: 'Oona Laakso', address: 'Kivitie 15, Helsinki', visitNotes: 'Hengityshoito', medication: 'Salbutamol-inhalaattori', dosage: '2 puffia PRN' },
-    { id: '11', time: '13:30', patient: 'Anna Virtanen', address: 'Keskuskatu 1, Helsinki', visitNotes: 'Haavanhoito', medication: 'Ei lääkettä', dosage: '' },
-    { id: '12', time: '14:00', patient: 'Ville Hämäläinen', address: 'Satamatie 4, Helsinki', visitNotes: 'Tutkimukset ja seuranta', medication: 'Ei lääkettä', dosage: '' },
-    { id: '13', time: '14:30', patient: 'Laura Nieminen', address: 'Puistotie 12, Helsinki', visitNotes: 'Rokotukset', medication: 'Tetanusrokote', dosage: '0.5 ml i.m.' },
-    { id: '14', time: '14:50', patient: 'Eero Räsänen', address: 'Kirkonkyläntie 9, Helsinki', visitNotes: 'Lääkkeiden jako', medication: 'Amoxicillin', dosage: '500 mg p.o. TID' },
-]);
+    // Use patients store for authoritative patient data. Patients store provides initial seed.
+    const existingPatients = getPatients();
+    const initialPatients = existingPatients || [];
+
+    // Initial appointments reference patient IDs from patients store.
+    const INITIAL_APPOINTMENTS: Appointment[] = [
+        { id: '1', time: '08:00', patientId: 'p-1', visitNotes: 'Syöpähoito', medication: 'Cisplatin', dosage: '70 mg/m² i.v.' },
+        { id: '2', time: '08:30', patientId: 'p-2', visitNotes: 'Saattohoito', medication: 'Morphine', dosage: '5 mg s.c. PRN' },
+        { id: '3', time: '09:00', patientId: 'p-3', visitNotes: 'Tutkimukset ja seuranta', medication: 'Paracetamol', dosage: '500 mg p.o.' },
+        { id: '4', time: '09:30', patientId: 'p-4', visitNotes: 'Haavanhoito', medication: 'Paikallinen antiseptinen', dosage: 'Levitä tarvittaessa' },
+        { id: '5', time: '10:00', patientId: 'p-5', visitNotes: 'Fysioterapia', medication: 'Ei lääkettä', dosage: '' },
+        { id: '6', time: '10:30', patientId: 'p-6', visitNotes: 'Suonen sisäiset hoidot', medication: 'Influenssarokote', dosage: '0.5 ml i.m.' },
+        { id: '7', time: '11:00', patientId: 'p-7', visitNotes: 'Haavanhoito', medication: 'Hydrokortisonivoide', dosage: 'Levitä ohuelti' },
+        { id: '8', time: '11:40', patientId: 'p-8', visitNotes: 'Tutkimukset ja seuranta', medication: 'Ei lääkettä', dosage: '' },
+        { id: '9', time: '12:00', patientId: 'p-4', visitNotes: 'Tutkimukset ja seuranta', medication: 'Insuliini', dosage: 'Katso potilastiedot' },
+        { id: '10', time: '12:40', patientId: 'p-9', visitNotes: 'Hengityshoito', medication: 'Salbutamol-inhalaattori', dosage: '2 puffia PRN' },
+        { id: '11', time: '13:30', patientId: 'p-3', visitNotes: 'Haavanhoito', medication: 'Ei lääkettä', dosage: '' },
+        { id: '12', time: '14:00', patientId: 'p-10', visitNotes: 'Tutkimukset ja seuranta', medication: 'Ei lääkettä', dosage: '' },
+        { id: '13', time: '14:30', patientId: 'p-5', visitNotes: 'Rokotukset', medication: 'Tetanusrokote', dosage: '0.5 ml i.m.' },
+        { id: '14', time: '14:50', patientId: 'p-1', visitNotes: 'Lääkkeiden jako', medication: 'Amoxicillin', dosage: '500 mg p.o. TID' },
+    ];
+
+    let initialAppointments: Appointment[] = [];
+    const storedAppointments = getSavedAppointments();
+    if (storedAppointments && storedAppointments.length) {
+        initialAppointments = storedAppointments as Appointment[];
+    } else {
+        initialAppointments = INITIAL_APPOINTMENTS;
+        setSavedAppointments(initialAppointments as any);
+    }
+
+    const [patientsState, setPatientsState] = useState<any[]>(initialPatients || []);
+    const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTime, setEditTime] = useState('');
@@ -114,6 +131,7 @@ const Schedule = () => {
             // clamp index
             const idx = Math.min(Math.max(0, recentlyDeleted.index), next.length);
             next.splice(idx, 0, recentlyDeleted.item);
+            setSavedAppointments(next as any);
             return next;
         });
         setRecentlyDeleted(null);
@@ -145,21 +163,34 @@ const Schedule = () => {
     const handleEdit = (appointment: Appointment) => {
         setEditingId(appointment.id);
         setEditTime(appointment.time);
-        setEditPatient(appointment.patient);
+        const p = patientsState.find((x) => String(x.id) === String(appointment.patientId));
+        setEditPatient(p ? p.name : '');
         setEditVisitNotes(appointment.visitNotes || '');
         setEditMedication(appointment.medication || '');
         setEditDosage(appointment.dosage || '');
     };
 
+    // When returning from Patient screen we should refresh appointments from session
+    useFocusEffect(
+        React.useCallback(() => {
+            const stored = getSavedAppointments();
+            if (stored) {
+                setAppointments(stored);
+            }
+            const storedSel = getSavedAppointment();
+            if (storedSel) {
+                setCurrentPatientId(storedSel.id);
+            }
+        }, [])
+    );
+
     const handleSave = () => {
         if (editingId) {
-            setAppointments((prev) =>
-                prev.map((apt) =>
-                    apt.id === editingId
-                        ? { ...apt, time: editTime, patient: editPatient, visitNotes: editVisitNotes, medication: editMedication, dosage: editDosage }
-                        : apt
-                )
+            const next = appointments.map((apt) =>
+                apt.id === editingId ? { ...apt, time: editTime, visitNotes: editVisitNotes, medication: editMedication, dosage: editDosage } : apt
             );
+            setAppointments(next);
+            setSavedAppointments(next as any);
             Alert.alert('Tallennettu', 'Aikataulu päivitetty');
             setEditingId(null);
         }
@@ -181,6 +212,7 @@ const Schedule = () => {
                             const next = prev.filter((apt) => apt.id !== id);
                             // store recently deleted so undo can restore
                             setRecentlyDeleted({ item: deleted, index: idx });
+                            setSavedAppointments(next as any);
                             return next;
                         });
                         showToast('Varaus poistettu');
@@ -196,8 +228,8 @@ const Schedule = () => {
             // Persist selection in session so Patient can restore if unmounted
             setSavedAppointment(appointment);
             setSavedAppointments(appointments);
-            // Pass the selected appointment and the whole appointments list
-            navigation.navigate('Patient', { patient: appointment, appointments });
+            // Pass the selected appointmentId and patientId so Patient screen can load the patient entity
+            navigation.navigate('Patient', { patientId: appointment.patientId, appointmentId: appointment.id });
         }
     };
 
@@ -230,10 +262,17 @@ const Schedule = () => {
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.patient, currentPatientId === item.id && styles.activePatient]}>
-                            {item.patient}
-                        </Text>
-                        <Text style={styles.address}>{item.address}</Text>
+                        {
+                            (() => {
+                                const p = patientsState.find((x) => String(x.id) === String(item.patientId));
+                                return (
+                                    <>
+                                        <Text style={[styles.patient, currentPatientId === item.id && styles.activePatient]}>{p ? p.name : 'Tuntematon'}</Text>
+                                        <Text style={styles.address}>{p ? p.contact : ''}</Text>
+                                    </>
+                                );
+                            })()
+                        }
                         {renderVisitInfo(item)}
                     </View>
                 </View>
@@ -346,12 +385,9 @@ const Schedule = () => {
                             />
 
                             <Text style={styles.label}>Asiakas</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={editPatient}
-                                onChangeText={setEditPatient}
-                                placeholder="Asiakkaan nimi"
-                            />
+                            <View style={[styles.input, { justifyContent: 'center', backgroundColor: '#f3f4f6' }] }>
+                                <Text>{editPatient}</Text>
+                            </View>
 
                             <Text style={styles.label}>Vierailun tyyppi (pika-valinta)</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
