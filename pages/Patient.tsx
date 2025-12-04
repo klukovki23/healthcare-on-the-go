@@ -11,12 +11,25 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
 import MainLayout from '../components/MainLayout';
-import { getSavedAppointment, getSavedAppointments, setSavedAppointment as setSessionAppointment, setSavedAppointments as setSessionAppointments, getPatientNotes, setPatientNotes, addPersonalWorkspaceNote } from '../utils/session';
+import { getSavedAppointment, getSavedAppointments, setSavedAppointment as setSessionAppointment, setSavedAppointments as setSessionAppointments, getPatientNotes, setPatientNotes, addPersonalWorkspaceNote, setDemoCooldownUntil, setGlobalToastMessage } from '../utils/session';
 import { getPatients, getPatientById, setPatient as setPatientEntity, setPatients as setPatientsStore } from '../utils/patients';
+
+export const PATIENT_SUMMARIES: { [id: string]: string } = {
+    'p-1': "Lääkitys: Cisplatin 70 mg/m² i.v., Amoxicillin 500 mg p.o. TID. Eero Räsänen, 33-vuotias mies, jolla on diagnosoitu keuhkosyöpä. Hänelle annetaan syöpähoitoa kemoterapiana. Lisäksi lääkkeiden jako ja seuranta kotioloissa. Hoitoon liittyy säännöllinen veriarvojen tarkkailu ja mahdollisten haittavaikutusten seuranta.",
+    'p-2': "Lääkitys: Morphine 5 mg s.c. PRN. Sari Lehtinen, 43-vuotias, saattohoidossa. Hänellä on diagnosoitu edennyt maksasyöpä, ja hoito keskittyy kivunhallintaan ja elämänlaadun ylläpitämiseen. Kotikäynnit sisältävät lääkityksen tarkistusta ja oireiden lievitystä.",
+    'p-3': "Lääkitys: Paracetamol 500 mg p.o. Anna Virtanen, 53-vuotias, jolla on lievä nivelrikko ja ihottumaa. Hän käy tutkimuksissa ja seurannassa, ja tarvittaessa haavanhoitoon liittyvä tuki kotona. Painopiste on oireiden hallinnassa ja yleisen terveydentilan ylläpidossa.",
+    'p-4': "Lääkitys: Paikallinen antiseptinen tarvittaessa, Insuliini (katso potilastiedot). Mikko Korhonen, 63-vuotias, jolla on krooninen haava jalassa ja tyypin 2 diabetes. Hänelle tehdään säännöllistä haavanhoitoa sekä insuliinin annostuksen tarkistusta. Seuranta keskittyy haavan paranemiseen ja verensokerin hallintaan.",
+    'p-5': "Lääkitys: Ei lääkettä, Tetanusrokote 0.5 ml i.m. Laura Nieminen, 73-vuotias, jolla on polvien nivelrikko ja lievä osteoporoosi. Hän käy fysioterapiassa ja saa tarvittaessa rokotuksia. Hoidon tavoitteena on toimintakyvyn ylläpitäminen ja kipujen vähentäminen.",
+    'p-6': "Lääkitys: Influenssarokote 0.5 ml i.m. Jussi Mäkinen, 83-vuotias, jolla on lievä kognitiivinen heikentyminen ja suonen sisäiset hoidot. Hänelle annetaan rokotuksia ja seurataan verenkierron toimintaa sekä yleistä terveydentilaa kotikäynneillä.",
+    'p-7': "Lääkitys: Hydrokortisonivoide ohuelti levitettynä. Pekka Salmi, 93-vuotias, jolla on krooninen haava käsivarressa. Hoitoon kuuluu haavan säännöllinen tarkistus ja kotihoito-ohjeistus, jotta paraneminen etenee mahdollisimman hyvin.",
+    'p-8': "Lääkitys: Ei lääkettä. Tiina Koskinen, 103-vuotias, jolla ei ole merkittäviä kroonisia sairauksia, mutta ikään liittyvää kuulon ja näön heikkenemistä. Hän käy säännöllisesti tutkimuksissa ja seurannassa kotona yleisen terveydentilan tarkistamiseksi.",
+    'p-9': "Lääkitys: Salbutamol-inhalaattori 2 puffia PRN. Oona Laakso, 23-vuotias, jolla on astma. Hänelle annetaan hengityshoitoa tarvittaessa ja säännöllistä seurantaa kotona hengityksen hallinnan ylläpitämiseksi.",
+    'p-10': "Lääkitys: Ei lääkettä. Ville Hämäläinen, 33-vuotias, jolla on aiempia urheiluvammoja, mukaan lukien polven eturistisidevamma ja toistuvat nilkan nyrjähdykset. Hän käy tutkimuksissa ja seurannassa, ja hoito keskittyy kuntoutukseen ja vammojen ehkäisyyn.",
+};
 
 
 interface Patient {
@@ -62,6 +75,13 @@ const PatientCard = () => {
         if (route.params?.appointmentId) {
             appt = (all || []).find((a) => String(a.id) === String(route.params.appointmentId));
         }
+
+        // If no explicit appointmentId, try to find appointment by patientId (useful when navigation only provides patientId)
+        if (!appt && (route.params?.patientId || patientIdParam)) {
+            const pid = route.params?.patientId ?? patientIdParam;
+            appt = (all || []).find((a) => String(a.patientId) === String(pid));
+        }
+
         if (!appt) appt = route.params?.appointment ?? getSavedAppointment();
         if (appt) setSavedAppointment(appt);
 
@@ -94,6 +114,42 @@ const PatientCard = () => {
     const movedTimerRef = useRef<any>(null);
     const [movedFlag, setMovedFlag] = useState<boolean>(false);
     const [showNameEditor, setShowNameEditor] = useState<boolean>(false);
+    const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+    const [addressInput, setAddressInput] = useState<string>('');
+    const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+    const [detailsText, setDetailsText] = useState<string>('');
+
+    const HELP_KEYWORDS = [
+        'Sairaskohtaus',
+        'Tajuton potilas',
+        'Vainaja',
+        'Itseen kohdistuva uhka',
+        'Puuttuva väline',
+        'Muu syy',
+    ];
+
+    const toggleKeyword = (k: string) => {
+        setSelectedKeywords((prev) => {
+            if (prev.includes(k)) return prev.filter((x) => x !== k);
+            return [...prev, k];
+        });
+    };
+
+    const handleCancelHelp = () => {
+        setShowHelpModal(false);
+        setSelectedKeywords([]);
+        setDetailsText('');
+        setAddressInput(currentPatient?.contact || '');
+    };
+
+    const handleSendHelp = () => {
+        // For now, don't create a schedule entry. Just close the modal and confirm sending.
+        setShowHelpModal(false);
+        Alert.alert('Avunpyyntö lähetetty');
+        // Reset inputs
+        setSelectedKeywords([]);
+        setDetailsText('');
+    };
     // Editable fields for patient info
     const [nameInput, setNameInput] = useState<string>('');
     const [contactInput, setContactInput] = useState<string>('');
@@ -152,7 +208,6 @@ const PatientCard = () => {
     const handleVoiceInput = () => {
         if (!isRecording) {
             setIsRecording(true);
-            Alert.alert('Äänitys', 'Äänitys aloitettu...');
             setTimeout(() => {
                 const simulated = 'Simuloitu äänimuistiinpano tästä potilaasta.';
                 setNoteText(simulated);
@@ -160,11 +215,9 @@ const PatientCard = () => {
                 setMovedFlag(false);
                 persistCurrentNote(simulated);
                 setIsRecording(false);
-                Alert.alert('Äänitys', 'Äänitys valmis');
             }, 2000);
         } else {
             setIsRecording(false);
-            Alert.alert('Äänitys', 'Äänitys pysäytetty');
         }
     };
 
@@ -205,28 +258,34 @@ const PatientCard = () => {
     const coordinatorPhoneDisplay = '050 123 4567';
 
     const handleSOS = () => {
-        Alert.alert(
-            'Hätäapu',
-            `Soitetaanko ${coordinatorName}, ${coordinatorPhoneDisplay}?`,
-            [
-                { text: 'Peruuta', style: 'cancel' },
-                {
-                    text: 'Soita',
-                    onPress: () => {
-                        // Try to open the phone dialer
-                        const tel = `tel:${coordinatorPhoneNumber}`;
-                        Linking.canOpenURL(tel).then((supported) => {
-                            if (supported) {
-                                Linking.openURL(tel);
-                            } else {
-                                Alert.alert('Virhe', 'Puhelinsoittoa ei voida aloittaa tällä laitteella.');
-                            }
-                        });
-                    },
-                    style: 'destructive',
-                },
-            ]
-        );
+        // Open help clarification modal instead of directly creating a schedule entry
+        setShowHelpModal(true);
+    };
+
+    const navigation = useNavigation<any>();
+
+    const handleCompleteVisit = () => {
+        if (!savedAppointment) return;
+        try {
+            const all = getSavedAppointments() || savedAppointments || [];
+            // Remove the completed appointment from the schedule
+            const updatedAll = (all || []).filter((a: any) => String(a.id) !== String(savedAppointment.id));
+            // persist updates
+            setSessionAppointments(updatedAll);
+            // start 2-minute cooldown so a new demo notification appears after completion
+            try { setDemoCooldownUntil(Date.now() + 2 * 60 * 1000); } catch (e) {}
+            // set transient message so Schedule can show animated confirmation on focus
+            try { setGlobalToastMessage('Hätätehtävä kuitattu'); } catch (e) {}
+            // clear the single-saved appointment selection
+            try { setSessionAppointment(undefined); } catch (e) {}
+            // update local state
+            setSavedAppointment(undefined);
+            setSavedAppointments(updatedAll);
+        } catch (e) {
+            // ignore persistence failures
+        }
+        // return to schedule view
+        try { navigation.navigate('Schedule'); } catch (e) { /* ignore */ }
     };
 
     const handleSavePatient = () => {
@@ -327,7 +386,12 @@ const PatientCard = () => {
 
     return (
         <MainLayout>
-            <ScrollView style={styles.container}>
+            <ScrollView
+                style={styles.container}
+                contentContainerStyle={{ paddingBottom: 88 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Header-napit */}
                     <View style={styles.header}>
                         <Text style={styles.title}>{currentPatient.name}</Text>
@@ -348,10 +412,10 @@ const PatientCard = () => {
                 {/* Potilastiedot editor (modal) */}
                 <Modal visible={showNameEditor} transparent animationType="slide" onRequestClose={() => setShowNameEditor(false)}>
                     <View style={styles.modalOverlay}>
-                        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, width: '100%' }}>
+                        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 60} style={{ flex: 1, width: '100%' }}>
                             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
                                 <View style={styles.modalCard}>
-                                    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 12 }}>
+                                    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 12, paddingBottom: 24 }}>
                                         <Text style={styles.cardTitle}>Muokkaa potilastietoja</Text>
                                         <Text style={styles.cardLabel}>Nimi</Text>
                                         <TextInput style={styles.input} value={nameInput} onChangeText={setNameInput} placeholder="Nimi" />
@@ -364,7 +428,7 @@ const PatientCard = () => {
                                             <Text style={styles.saveText}>Tallenna</Text>
                                         </TouchableOpacity>
 
-                                        <TouchableOpacity onPress={() => setShowNameEditor(false)} style={styles.cancelButtonModal}>
+                                        <TouchableOpacity onPress={() => setShowNameEditor(false)} style={styles.modalButtonFull}>
                                             <Text style={styles.cancelText}>Peruuta</Text>
                                         </TouchableOpacity>
                                     </ScrollView>
@@ -377,14 +441,23 @@ const PatientCard = () => {
                 {/* Päivän toimenpiteet (read-only) */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Päivän toimenpiteet</Text>
+                    {savedAppointment && Array.isArray((savedAppointment as any).keywords) && (savedAppointment as any).keywords.length ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
+                            {((savedAppointment as any).keywords as string[]).map((k) => (
+                                <View key={k} style={styles.keywordChip}>
+                                    <Text style={styles.keywordText}>{k}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    ) : null}
                     <Text style={styles.cardText}>{pvVisitNotes || 'Ei toimenpiteitä tällä hetkellä'}</Text>
                     {pvMedication ? <Text style={[styles.cardText, { marginTop: 8 }]}>{pvMedication}{pvDosage ? ` — ${pvDosage}` : ''}</Text> : null}
                 </View>
 
-                {/* AI-yhteenveto */}
+                {/* Potilashistorian yhteenveto */}
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>AI Yhteenveto</Text>
-                    <Text style={styles.cardText}>Sairaudet: lääkitykset...</Text>
+                    <Text style={styles.cardTitle}>Potilashistorian yhteenveto</Text>
+                    <Text style={styles.cardText}>{PATIENT_SUMMARIES[String(currentPatient.id)] ?? 'Ei yhteenvetoa saatavilla.'}</Text>
                 </View>
 
                 {/* Muistiinpanot */}
@@ -431,13 +504,61 @@ const PatientCard = () => {
                     {/* Saved notes list removed — notes are only visible/edited in the editor */}
                 </View>
 
-                {/* Pyydä apua button placed under the notes card (centered) */}
+                {/* Action button: show 'Kuittaa käynti' for accepted help slots, otherwise 'Hälyytä apua' */}
                 <View style={{ alignItems: 'center', marginTop: 12 }}>
-                    <TouchableOpacity style={styles.helpButton} onPress={handleSOS} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="call" size={18} color="#fff" style={{ marginRight: 8 }} />
-                        <Text style={styles.helpButtonText}>Pyydä apua</Text>
-                    </TouchableOpacity>
+                    {savedAppointment && String(savedAppointment.id).startsWith('h-accepted-') && !((savedAppointment as any).completed) ? (
+                        <TouchableOpacity style={styles.completeButton} onPress={handleCompleteVisit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Text style={styles.completeButtonText}>Kuittaa käynti</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity style={styles.helpButton} onPress={handleSOS} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="call" size={18} color="#fff" style={{ marginRight: 8 }} />
+                            <Text style={styles.helpButtonText}>Hälyytä apua</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
+
+                {/* Help clarification modal (address, keywords, details) */}
+                <Modal visible={showHelpModal} transparent animationType="slide" onRequestClose={handleCancelHelp}>
+                    <View style={styles.modalOverlay}>
+                        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 60} style={{ flex: 1, width: '100%' }}>
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+                                <View style={styles.modalCard}>
+                                    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 12, paddingBottom: 24 }}>
+                                        <Text style={styles.cardTitle}>Lisätiedot avunpyynnölle</Text>
+
+                                        <Text style={styles.cardLabel}>Osoite</Text>
+                                        <TextInput value={addressInput || currentPatient?.contact || ''} onChangeText={setAddressInput} style={styles.addressInput} placeholder="Osoite" />
+
+                                        <Text style={[styles.cardLabel, { marginTop: 10 }]}>Syy (valitse yksi tai useampi)</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.keywordScroll}>
+                                            {HELP_KEYWORDS.map((k) => {
+                                                const selected = selectedKeywords.includes(k);
+                                                return (
+                                                    <TouchableOpacity key={k} onPress={() => toggleKeyword(k)} style={[styles.keywordChip, selected ? styles.keywordChipSelected : null]}>
+                                                        <Text style={selected ? styles.keywordTextSelected : styles.keywordText}>{k}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </ScrollView>
+
+                                        <Text style={[styles.cardLabel, { marginTop: 12 }]}>Lisätiedot</Text>
+                                        <TextInput value={detailsText} onChangeText={setDetailsText} style={styles.detailsTextarea} placeholder="Kerro lisätietoja..." multiline />
+
+                                        <View style={[styles.modalActions, { marginTop: 12 }]}> 
+                                                <TouchableOpacity onPress={handleCancelHelp} style={[styles.modalButtonRow, { flex: 1, marginRight: 8 }]}>
+                                                    <Text style={styles.cancelText}>Peruuta</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={handleSendHelp} style={[styles.sendButton, { minWidth: 120 }]}> 
+                                                    <Text style={styles.sendText}>Lähetä</Text>
+                                                </TouchableOpacity>
+                                        </View>
+                                    </ScrollView>
+                                </View>
+                            </View>
+                        </KeyboardAvoidingView>
+                    </View>
+                </Modal>
             </ScrollView>
         </MainLayout>
     );
@@ -676,7 +797,6 @@ const styles = StyleSheet.create({
     cancelButtonModal: {
         backgroundColor: '#f3f4f6',
         borderRadius: 8,
-        paddingVertical: 12,
         alignItems: 'center',
         alignSelf: 'stretch',
         width: '100%',
@@ -735,6 +855,23 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: 12,
     },
+    modalButtonRow: {
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalButtonFull: {
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'stretch',
+        width: '100%',
+        marginTop: 12,
+    },
     notesList: {
         borderTopWidth: 1,
         borderTopColor: '#e5e7eb',
@@ -763,5 +900,80 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 8,
         backgroundColor: '#fff',
+    },
+    addressInput: {
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 8,
+        padding: 8,
+        backgroundColor: '#fff',
+    },
+    keywordRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 8,
+    },
+    keywordScroll: {
+        paddingVertical: 6,
+        paddingRight: 12,
+        alignItems: 'center',
+    },
+    keywordChip: {
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#f1f5f9',
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    keywordChipSelected: {
+        backgroundColor: '#fee2e2',
+        borderColor: '#fca5a5',
+    },
+    keywordText: {
+        color: '#374151',
+        fontSize: 13,
+    },
+    keywordTextSelected: {
+        color: '#991b1b',
+        fontSize: 13,
+    },
+    detailsTextarea: {
+        minHeight: 80,
+        borderColor: '#d1d5db',
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 8,
+        marginTop: 6,
+        textAlignVertical: 'top',
+        backgroundColor: '#fff',
+    },
+    sendButton: {
+        backgroundColor: '#2563eb',
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 44,
+    },
+    sendText: {
+        color: '#fff',
+        fontWeight: '700',
+    },
+    completeButton: {
+        backgroundColor: '#2563eb',
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        borderRadius: 12,
+        minWidth: 180,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    completeButtonText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16,
     },
 });

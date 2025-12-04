@@ -73,15 +73,12 @@ const Patient = () => {
     const handleVoiceInput = () => {
         if (!isRecording) {
             setIsRecording(true);
-            Alert.alert('Äänitys', 'Äänitys aloitettu...');
             setTimeout(() => {
                 setNoteText('Simuloitu äänimuistiinpano tästä potilaasta.');
                 setIsRecording(false);
-                Alert.alert('Äänitys', 'Äänitys valmis');
             }, 2000);
         } else {
             setIsRecording(false);
-            Alert.alert('Äänitys', 'Äänitys pysäytetty');
         }
     };
 
