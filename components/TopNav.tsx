@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { getSavedAppointments, getHelpRequests } from '../utils/session';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,16 +14,16 @@ const TopNav = () => {
         { path: 'Reports', icon: 'clipboard-outline', label: 'Raportit' },
     ];
 
+    const saved = getSavedAppointments() || [];
+    const helpRequests = getHelpRequests() || [];
+    const hasHelpNotification = saved.some((a: any) => String(a.id) === 'h-demo') || (helpRequests && helpRequests.length > 0);
+
     return (
         <View style={styles.navbar}>
             {navItems.map((item) => {
                 const isActive = route.name === item.path;
-                return (
-                    <TouchableOpacity
-                        key={item.path}
-                        style={[styles.navButton, isActive && styles.activeButton]}
-                        onPress={() => navigation.navigate(item.path)}
-                    >
+                const content = (
+                    <>
                         <Ionicons
                             name={item.icon as any}
                             size={24}
@@ -31,6 +32,36 @@ const TopNav = () => {
                         <Text style={[styles.label, isActive && styles.activeLabel]}>
                             {item.label}
                         </Text>
+                    </>
+                );
+
+                // If this is the Schedule button, wrap and show badge when active notification exists
+                if (item.path === 'Schedule') {
+                    return (
+                        <TouchableOpacity
+                            key={item.path}
+                            style={[styles.navButton, isActive && styles.activeButton]}
+                            onPress={() => navigation.navigate(item.path)}
+                        >
+                            <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                                {content}
+                                {hasHelpNotification ? (
+                                    <View style={styles.navBadge} pointerEvents="none">
+                                        <Text style={styles.navBadgeText}>!</Text>
+                                    </View>
+                                ) : null}
+                            </View>
+                        </TouchableOpacity>
+                    );
+                }
+
+                return (
+                    <TouchableOpacity
+                        key={item.path}
+                        style={[styles.navButton, isActive && styles.activeButton]}
+                        onPress={() => navigation.navigate(item.path)}
+                    >
+                        {content}
                     </TouchableOpacity>
                 );
             })}
@@ -67,4 +98,16 @@ const styles = StyleSheet.create({
         color: '#ffffff', // valkoinen aktiivinen
         fontWeight: '600',
     },
+    navBadge: {
+        position: 'absolute',
+        right: -6,
+        top: -6,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#ef4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    navBadgeText: { color: '#fff', fontWeight: '900', fontSize: 14 },
 });

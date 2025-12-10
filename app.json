@@ -15,14 +15,29 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Sovellus tarvitsee pääsyn kameraan skannausta ja kuvien ottamista varten.",
+        "NSPhotoLibraryUsageDescription": "Sovellus tarvitsee pääsyn valokuva-albumiin tallentaakseen otetut kuvat.",
+        "NSPhotoLibraryAddUsageDescription": "Sovellus tallentaa kuvia käyttäjän valokuva-albumiin.",
+        "NSMicrophoneUsageDescription": "Sovellus tarvitsee pääsyn mikrofoniin äänimuistiinpanoja varten."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS"
+      ],
+      "package": "com.anonymous.healthcareonthegoapp"
     },
+    "plugins": [
+      "./plugins/withMediaLibraryPermissions.js"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }
