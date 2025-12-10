@@ -14,7 +14,7 @@ Running the Healthcare On The Go 2 app
 "npm install"
 
 3. Install Android Studio for the Android SDK and device tools.
-   You will need to insall Android SDK Platform, Platform Tools and Build Tools.
+   You will need to install Android SDK Platform, Platform Tools and Build Tools.
    Add Android tools to your PATH (sdk/platform-tools)
    
 4. Connect a Device
