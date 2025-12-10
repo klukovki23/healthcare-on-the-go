@@ -10,18 +10,17 @@ Healthcare On The Go 2 is a React Native application designed to support Home Ho
 ***********************************************************************************************
 Running the Healthcare On The Go 2 app 
 
-Follow these steps to set up and run the project on an Android device.
-1. Install Dependencies:
-Make sure you have Node.js and npm installed. After downloading the project, open the folder and install the required packages:
+1. Make sure you have Node.js and npm installed. After downloading the project, open the folder and install the required packages:
 npm install
-2. Install Android Studio:
-You need Android Studio for the Android SDK and device tools.
 
-•	Install Android SDK Platform, Platform Tools and Build Tools
-•	Add Android tools to your PATH (sdk/platform-tools)
+3. Install Android Studio for the Android SDK and device tools.
+   You will need to insall Android SDK Platform, Platform Tools and Build Tools.
+   Add Android tools to your PATH (sdk/platform-tools)
+   
 4. Connect a Device
 Connect via USB or WiFi using QR code in Android Studio
-5. Start the App
+
+6. Start the App
 npx expo run:android
 This compiles a full native build and installs it on the device.
 
