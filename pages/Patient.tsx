@@ -192,7 +192,6 @@ const Patient = () => {
         };
     }, []);
 
-
     const handlePrevious = () => {
         if (patients.length) {
             setCurrentPatientIndex((prev) => (prev > 0 ? prev - 1 : patients.length - 1));
