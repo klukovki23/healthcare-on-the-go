@@ -28,10 +28,7 @@ export const PATIENT_SUMMARIES: { [id: string]: string } = {
     'p-9': "Lääkitys: Salbutamol-inhalaattori 2 puffia PRN. Oona Laakso, 23-vuotias, jolla on astma. Hänelle annetaan hengityshoitoa tarvittaessa ja säännöllistä seurantaa kotona hengityksen hallinnan ylläpitämiseksi.",
     'p-10': "Lääkitys: Ei lääkettä. Ville Hämäläinen, 33-vuotias, jolla on aiempia urheiluvammoja, mukaan lukien polven eturistisidevamma ja toistuvat nilkan nyrjähdykset. Hän käy tutkimuksissa ja seurannassa, ja hoito keskittyy kuntoutukseen ja vammojen ehkäisyyn.",
 };
-import {
-    ExpoSpeechRecognitionModule,
-    useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
+// Speech recognition removed — use simple simulated voice input for now.
 
 interface Patient {
     id: string | number;
@@ -204,48 +201,20 @@ const Patient = () => {
         }
     };
 
-    const handleVoiceInput = async () => {
+    const handleVoiceInput = () => {
         if (!isRecording) {
-            const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-            if (!granted) {
-                Alert.alert('Virhe', 'Puheentunnistus vaatii luvat.');
-                return;
-            }
-            // mark as edited (not moved) and persist immediately
-            setMovedFlag(false);
-            // persist the current note text before clearing it for recording
-            persistCurrentNote(noteText);
-
             setIsRecording(true);
-            setNoteText('');
-
-            ExpoSpeechRecognitionModule.start({
-                lang: 'fi-FI',
-                interimResults: false,
-                continuous: false,
-            });
+            setTimeout(() => {
+                const simulated = 'Simuloitu äänimuistiinpano tästä potilaasta.';
+                setNoteText(simulated);
+                setMovedFlag(false);
+                persistCurrentNote(simulated);
+                setIsRecording(false);
+            }, 2000);
         } else {
-            ExpoSpeechRecognitionModule.stop();
             setIsRecording(false);
         }
     };
-
-    // Listen to speech recognition results
-    useSpeechRecognitionEvent('result', (event) => {
-        const text = event.results[0]?.transcript ?? '';
-        setNoteText(text);
-    });
-
-    useSpeechRecognitionEvent('end', () => {
-        setIsRecording(false);
-
-    });
-
-    useSpeechRecognitionEvent('error', (event) => {
-        console.log('SpeechRecognition error:', event);
-        setIsRecording(false);
-        Alert.alert('Virhe', 'Puheentunnistuksessa tapahtui virhe');
-    });
 
     const handleMoveToWorkspace = () => {
         const t = (noteText || '').trim();
