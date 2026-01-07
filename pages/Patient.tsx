@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as SpeechRecognition from 'expo-speech-recognition';
 import MainLayout from '../components/MainLayout';
 import { getSavedAppointment, getSavedAppointments, setSavedAppointment as setSessionAppointment, setSavedAppointments as setSessionAppointments, getPatientNotes, setPatientNotes, addPersonalWorkspaceNote, setDemoCooldownUntil, setGlobalToastMessage } from '../utils/session';
 import { getPatients, getPatientById, setPatient as setPatientEntity, setPatients as setPatientsStore } from '../utils/patients';
@@ -28,7 +29,15 @@ export const PATIENT_SUMMARIES: { [id: string]: string } = {
     'p-9': "Lääkitys: Salbutamol-inhalaattori 2 puffia PRN. Oona Laakso, 23-vuotias, jolla on astma. Hänelle annetaan hengityshoitoa tarvittaessa ja säännöllistä seurantaa kotona hengityksen hallinnan ylläpitämiseksi.",
     'p-10': "Lääkitys: Ei lääkettä. Ville Hämäläinen, 33-vuotias, jolla on aiempia urheiluvammoja, mukaan lukien polven eturistisidevamma ja toistuvat nilkan nyrjähdykset. Hän käy tutkimuksissa ja seurannassa, ja hoito keskittyy kuntoutukseen ja vammojen ehkäisyyn.",
 };
-// Speech recognition removed — use simple simulated voice input for now.
+
+// Initialize speech recognition
+const initializeSpeechRecognition = async () => {
+    const granted = await SpeechRecognition.getPermissionsAsync();
+    if (!granted.granted) {
+        await SpeechRecognition.requestPermissionsAsync();
+    }
+};
+
 
 interface Patient {
     id: string | number;
@@ -189,6 +198,24 @@ const Patient = () => {
         };
     }, []);
 
+    // Set up speech recognition listener
+    useEffect(() => {
+        const listener = SpeechRecognition.addRecognitionResultsListener((event) => {
+            if (event.results && event.results.length > 0) {
+                const transcript = event.results[0].transcript || '';
+                if (transcript) {
+                    setNoteText(transcript);
+                    setMovedFlag(false);
+                    const pid = currentPatient?.id ?? (savedAppointment ? savedAppointment.patientId ?? savedAppointment.id : undefined);
+                    if (pid) {
+                        try { setPatientNotes(pid, [transcript, ...((savedNotes || []).slice(0, 9))]); } catch (e) { }
+                    }
+                }
+            }
+        });
+        return () => listener?.remove();
+    }, [currentPatient, savedAppointment, savedNotes]);
+
     const handlePrevious = () => {
         if (patients.length) {
             setCurrentPatientIndex((prev) => (prev > 0 ? prev - 1 : patients.length - 1));
@@ -201,18 +228,26 @@ const Patient = () => {
         }
     };
 
-    const handleVoiceInput = () => {
+    const handleVoiceInput = async () => {
         if (!isRecording) {
-            setIsRecording(true);
-            setTimeout(() => {
-                const simulated = 'Simuloitu äänimuistiinpano tästä potilaasta.';
-                setNoteText(simulated);
-                setMovedFlag(false);
-                persistCurrentNote(simulated);
-                setIsRecording(false);
-            }, 2000);
+            try {
+                await initializeSpeechRecognition();
+                SpeechRecognition.startListening({
+                    lang: 'fi-FI',
+                    maxResults: 1,
+                    shouldReportPartialResults: false,
+                });
+                setIsRecording(true);
+            } catch (error) {
+                console.error('Error starting speech recognition:', error);
+            }
         } else {
-            setIsRecording(false);
+            try {
+                SpeechRecognition.stopListening();
+                setIsRecording(false);
+            } catch (error) {
+                console.error('Error stopping speech recognition:', error);
+            }
         }
     };
 
@@ -263,8 +298,8 @@ const Patient = () => {
             const updatedAll = (all || []).filter((a: any) => String(a.id) !== String(savedAppointment.id));
             // persist updates
             setSessionAppointments(updatedAll);
-            // start 2-minute cooldown so a new demo notification appears after completion
-            try { setDemoCooldownUntil(Date.now() + 2 * 60 * 1000); } catch (e) { }
+            // start 3-minute cooldown so a new demo notification appears after completion
+            try { setDemoCooldownUntil(Date.now() + 3 * 60 * 1000); } catch (e) { }
             // set transient message so Schedule can show animated confirmation on focus
             try { setGlobalToastMessage('Hätätehtävä kuitattu'); } catch (e) { }
             // clear the single-saved appointment selection
