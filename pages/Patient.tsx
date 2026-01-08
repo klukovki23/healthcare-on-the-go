@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as SpeechRecognition from 'expo-speech-recognition';
 import MainLayout from '../components/MainLayout';
 import { getSavedAppointment, getSavedAppointments, setSavedAppointment as setSessionAppointment, setSavedAppointments as setSessionAppointments, getPatientNotes, setPatientNotes, addPersonalWorkspaceNote, setDemoCooldownUntil, setGlobalToastMessage } from '../utils/session';
 import { getPatients, getPatientById, setPatient as setPatientEntity, setPatients as setPatientsStore } from '../utils/patients';
@@ -28,10 +29,12 @@ export const PATIENT_SUMMARIES: { [id: string]: string } = {
     'p-9': "Lääkitys: Salbutamol-inhalaattori 2 puffia PRN. Oona Laakso, 23-vuotias, jolla on astma. Hänelle annetaan hengityshoitoa tarvittaessa ja säännöllistä seurantaa kotona hengityksen hallinnan ylläpitämiseksi.",
     'p-10': "Lääkitys: Ei lääkettä. Ville Hämäläinen, 33-vuotias, jolla on aiempia urheiluvammoja, mukaan lukien polven eturistisidevamma ja toistuvat nilkan nyrjähdykset. Hän käy tutkimuksissa ja seurannassa, ja hoito keskittyy kuntoutukseen ja vammojen ehkäisyyn.",
 };
+
 import {
     ExpoSpeechRecognitionModule,
     useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
+
 
 interface Patient {
     id: string | number;
@@ -192,6 +195,8 @@ const Patient = () => {
         };
     }, []);
 
+
+
     const handlePrevious = () => {
         if (patients.length) {
             setCurrentPatientIndex((prev) => (prev > 0 ? prev - 1 : patients.length - 1));
@@ -247,6 +252,7 @@ const Patient = () => {
         Alert.alert('Virhe', 'Puheentunnistuksessa tapahtui virhe');
     });
 
+
     const handleMoveToWorkspace = () => {
         const t = (noteText || '').trim();
         if (!t) return;
@@ -294,8 +300,8 @@ const Patient = () => {
             const updatedAll = (all || []).filter((a: any) => String(a.id) !== String(savedAppointment.id));
             // persist updates
             setSessionAppointments(updatedAll);
-            // start 2-minute cooldown so a new demo notification appears after completion
-            try { setDemoCooldownUntil(Date.now() + 2 * 60 * 1000); } catch (e) { }
+            // start 3-minute cooldown so a new demo notification appears after completion
+            try { setDemoCooldownUntil(Date.now() + 3 * 60 * 1000); } catch (e) { }
             // set transient message so Schedule can show animated confirmation on focus
             try { setGlobalToastMessage('Hätätehtävä kuitattu'); } catch (e) { }
             // clear the single-saved appointment selection
@@ -1007,4 +1013,3 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 });
-

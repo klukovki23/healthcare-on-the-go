@@ -16,7 +16,8 @@ const TopNav = () => {
 
     const saved = getSavedAppointments() || [];
     const helpRequests = getHelpRequests() || [];
-    const hasHelpNotification = saved.some((a: any) => String(a.id) === 'h-demo') || (helpRequests && helpRequests.length > 0);
+    const hasPendingHelp = (helpRequests || []).some((h: any) => !h.status || h.status === 'pending');
+    const hasHelpNotification = saved.some((a: any) => String(a.id) === 'h-demo') || hasPendingHelp;
 
     return (
         <View style={styles.navbar}>

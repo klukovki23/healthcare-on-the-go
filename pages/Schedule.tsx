@@ -95,6 +95,7 @@ const Schedule = () => {
     });
     const [helpRequests, setHelpRequests] = useState<any[]>(() => getHelpRequests() || []);
     const [mapFocusPatientName, setMapFocusPatientName] = useState<string | undefined>(undefined);
+    const [mapShowAlert, setMapShowAlert] = useState(false);
     const [demoDisabled, setDemoDisabled] = useState(false);
 
     // Highlight logic: automatically highlight the appointment whose effective start has passed.
@@ -587,26 +588,13 @@ const Schedule = () => {
         }
         setPatientsState((prev) => prev.filter((p) => String(p.id) !== 'p-demo'));
 
-        // Start a 2-minute cooldown so a new notification arrives after 2 minutes
-        try { setDemoCooldownUntil(Date.now() + 2 * 60 * 1000); } catch (e) { }
+        // Start a 1-minute cooldown so a new notification arrives after 1 minute
+        try { setDemoCooldownUntil(Date.now() + 60 * 1000); } catch (e) { }
 
         showToast('Avunpyyntö hylätty');
     };
 
-    // Confirmation wrappers to avoid accidental taps
-    const confirmAcceptDemo = (demo: Appointment) => {
-        Alert.alert('Oletko varma', 'Haluatko hyväksyä avunpyynnön?', [
-            { text: 'Ei', style: 'cancel' },
-            { text: 'Kyllä', onPress: () => acceptDemo(demo) },
-        ], { cancelable: true });
-    };
 
-    const confirmDeclineDemo = (demo: Appointment) => {
-        Alert.alert('Oletko varma', 'Haluatko hylätä apupyynnön?', [
-            { text: 'Ei', style: 'cancel' },
-            { text: 'Kyllä', onPress: () => declineDemo(demo) },
-        ], { cancelable: true });
-    };
 
     const renderVisitInfo = (appt: Appointment) => {
         return (
@@ -662,13 +650,25 @@ const Schedule = () => {
                         <Text style={styles.demoPatientName}>{patientName}</Text>
                         {patientAddress ? <Text style={styles.demoAddress}>{patientAddress}</Text> : null}
 
-                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                            <TouchableOpacity onPress={() => confirmAcceptDemo(item)} style={[styles.demoActionButton, { backgroundColor: '#10b981', marginRight: 12 }]}>
-                                <Text style={styles.saveText}>Hyväksy</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => confirmDeclineDemo(item)} style={[styles.demoActionButton, { backgroundColor: '#ef4444' }]}>
-                                <Text style={{ color: '#fff', fontWeight: '700' }}>Hylkää</Text>
-                            </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', justifyContent: isEditMode ? 'center' : 'space-between', marginTop: 10, alignItems: 'center' }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+                                <TouchableOpacity onPress={() => acceptDemo(item)} style={[styles.demoActionButton, { backgroundColor: '#10b981', marginRight: 12 }]}>
+                                    <Text style={styles.saveText}>Hyväksy</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => declineDemo(item)} style={[styles.demoActionButton, { backgroundColor: '#ef4444' }]}>
+                                    <Text style={{ color: '#fff', fontWeight: '700' }}>Hylkää</Text>
+                                </TouchableOpacity>
+                            </View>
+                            {!isEditMode ? (
+                                <View style={{ justifyContent: 'center', alignItems: 'center', marginLeft: 8 }}>
+                                    <View style={{ position: 'relative' }}>
+                                        <TouchableOpacity onPress={() => openMap(item.patientId, item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                            <Ionicons name="map-outline" size={22} color="#2563eb" />
+                                        </TouchableOpacity>
+                                        {/* dot removed: no red indicator on map icon for help notifications */}
+                                    </View>
+                                </View>
+                            ) : null}
                         </View>
                     </View>
                 </View>
@@ -714,6 +714,16 @@ const Schedule = () => {
                         </View>
                     </View>
                 </View>
+                {!isEditMode ? (
+                    <View style={{ justifyContent: 'center', alignItems: 'center', marginLeft: 8 }}>
+                        <View style={{ position: 'relative' }}>
+                            <TouchableOpacity onPress={() => openMap(item.patientId, item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Ionicons name="map-outline" size={22} color="#2563eb" />
+                            </TouchableOpacity>
+                            {/* dot removed: no red indicator on map icon for help notifications */}
+                        </View>
+                    </View>
+                ) : null}
                 {isEditMode && (
                     <View style={styles.itemButtons}>
                         <TouchableOpacity onPress={() => handleEdit(item)} style={{ marginLeft: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -730,8 +740,31 @@ const Schedule = () => {
             </TouchableOpacity>
         );
     };
-    const openMap = (patientIdOrName?: string) => {
-        // If a help notification exists, prioritize showing the notification's patient/address
+    const openMap = (patientIdOrName?: string, appointmentId?: string) => {
+        // If an explicit patient id or name was provided, always show that patient's map
+        if (patientIdOrName) {
+            const byId = patientsState.find((p) => String(p.id) === String(patientIdOrName));
+            if (byId) {
+                setMapFocusPatientName(byId.name);
+                setMapFocusPatientAddress(byId.contact);
+            } else {
+                // Try authoritative helpers before falling back to raw string
+                const pname = getPatientNameForId(patientIdOrName) ?? patientIdOrName;
+                const paddr = getPatientAddressForId(patientIdOrName);
+                setMapFocusPatientName(pname);
+                setMapFocusPatientAddress(paddr);
+            }
+            // If the appointment id provided corresponds to a help notification, show alert image
+            if (appointmentId && (String(appointmentId) === 'h-demo' || String(appointmentId).startsWith('h-accepted-'))) {
+                setMapShowAlert(true);
+            } else {
+                setMapShowAlert(false);
+            }
+            setIsMapOpen(true);
+            return;
+        }
+
+        // No explicit patient requested — if there is an active help notification, prefer showing it
         if (hasHelpNotification) {
             // Prefer the demo appointment if present, otherwise prefer any accepted help slot, then helpRequests
             const demoAppt = appointments.find((a) => String(a.id) === 'h-demo');
@@ -746,6 +779,7 @@ const Schedule = () => {
                     setMapFocusPatientName(pname);
                     setMapFocusPatientAddress(paddr);
                 }
+                setMapShowAlert(true);
                 setIsMapOpen(true);
                 return;
             }
@@ -762,6 +796,7 @@ const Schedule = () => {
                     setMapFocusPatientName(pname);
                     setMapFocusPatientAddress(paddr);
                 }
+                setMapShowAlert(true);
                 setIsMapOpen(true);
                 return;
             }
@@ -779,23 +814,10 @@ const Schedule = () => {
                     setMapFocusPatientName(pname);
                     setMapFocusPatientAddress(paddr);
                 }
+                setMapShowAlert(true);
                 setIsMapOpen(true);
                 return;
             }
-        }
-
-        // If an id or name was provided, use that
-        if (patientIdOrName) {
-            const byId = patientsState.find((p) => String(p.id) === String(patientIdOrName));
-            if (byId) {
-                setMapFocusPatientName(byId.name);
-                setMapFocusPatientAddress(byId.contact);
-            } else {
-                setMapFocusPatientName(patientIdOrName);
-                setMapFocusPatientAddress(undefined);
-            }
-            setIsMapOpen(true);
-            return;
         }
 
         // otherwise fall back to the highlighted appointment's patient
@@ -809,10 +831,12 @@ const Schedule = () => {
             setMapFocusPatientName(undefined);
             setMapFocusPatientAddress(undefined);
         }
+        // no explicit help selected
+        setMapShowAlert(false);
         setIsMapOpen(true);
     };
 
-    const closeMap = () => { setIsMapOpen(false); setMapFocusPatientName(undefined); setMapFocusPatientAddress(undefined); };
+    const closeMap = () => { setIsMapOpen(false); setMapFocusPatientName(undefined); setMapFocusPatientAddress(undefined); setMapShowAlert(false); };
 
     return (
         <MainLayout>
@@ -821,20 +845,6 @@ const Schedule = () => {
                 <View style={styles.header}>
                     <Text style={styles.title}>Aikataulu</Text>
                     <View style={styles.headerButtons}>
-                        <View style={{ position: 'relative' }}>
-                            <TouchableOpacity
-                                onPress={() => openMap()}
-                                style={[
-                                    styles.iconButton,
-                                    { backgroundColor: '#2563eb' },
-                                ]}
-                            >
-                                <Ionicons name="map" size={20} color="#fff" />
-                            </TouchableOpacity>
-                            {hasHelpNotification ? (
-                                <View style={styles.mapIconDot} pointerEvents="none" />
-                            ) : null}
-                        </View>
                         <TouchableOpacity
                             onPress={() => setIsEditMode(!isEditMode)}
                             style={[
@@ -966,7 +976,7 @@ const Schedule = () => {
                                 style={styles.mapImageWrapper}
                                 onLayout={(e) => {
                                     const { width: wrapW, height: wrapH } = e.nativeEvent.layout;
-                                    const chosenIntrinsic = hasHelpNotification ? alertIntrinsicSize : intrinsicSize;
+                                    const chosenIntrinsic = mapShowAlert ? alertIntrinsicSize : intrinsicSize;
                                     if (!chosenIntrinsic) return;
                                     const imgW = chosenIntrinsic.width || wrapW;
                                     const imgH = chosenIntrinsic.height || wrapH;
@@ -989,7 +999,7 @@ const Schedule = () => {
                                         <Text style={styles.mapCloseText}>✕</Text>
                                     </TouchableOpacity>
                                 </View>
-                                {hasHelpNotification && alertImgSource ? (
+                                {mapShowAlert && alertImgSource ? (
                                     <Image source={alertImgSource} style={[styles.mapImage, { width: mapDisplaySize.width, height: mapDisplaySize.height }]} />
                                 ) : mapImgSource ? (
                                     <Image source={mapImgSource} style={[styles.mapImage, { width: mapDisplaySize.width, height: mapDisplaySize.height }]} />
@@ -1174,4 +1184,3 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
 });
-

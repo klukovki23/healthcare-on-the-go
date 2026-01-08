@@ -388,7 +388,9 @@ const Reports: React.FC = () => {
                             value={searchTerm}
                             onChangeText={setSearchTerm}
                         />
-                        <TouchableOpacity style={styles.scanIconButton} onPress={handleScan}>
+                        <TouchableOpacity style={styles.scanIconButton} onPress={() => {
+                            // Just for visual feedback, search is automatic via searchTerm state
+                        }}>
                             <Text style={styles.scanIconButtonText}>🔍</Text>
                         </TouchableOpacity>
                     </View>
