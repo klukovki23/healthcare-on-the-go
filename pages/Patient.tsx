@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SpeechRecognition from 'expo-speech-recognition';
 import MainLayout from '../components/MainLayout';
 import { getSavedAppointment, getSavedAppointments, setSavedAppointment as setSessionAppointment, setSavedAppointments as setSessionAppointments, getPatientNotes, setPatientNotes, addPersonalWorkspaceNote, setDemoCooldownUntil, setGlobalToastMessage } from '../utils/session';
 import { getPatients, getPatientById, setPatient as setPatientEntity, setPatients as setPatientsStore } from '../utils/patients';
@@ -225,7 +224,7 @@ const Patient = () => {
             setNoteText('');
 
             ExpoSpeechRecognitionModule.start({
-                lang: 'fi-FI',
+                lang: "fi-FI",
                 interimResults: false,
                 continuous: false,
             });
